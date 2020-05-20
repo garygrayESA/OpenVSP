@@ -72,7 +72,15 @@ SetEditorScreen::SetEditorScreen(ScreenMgr* mgr ) : BasicScreen( mgr, 300, 330, 
     m_BorderLayout.AddYGap();
     //Sets x back to the left side with offset
     m_BorderLayout.SetX( borderPaddingWidth );
-    //add button on the bottom of screen
+    
+    //Use this so we can have 2 buttons on same line
+    m_BorderLayout.SetSameLineFlag( true );
+    //Add in the buttons for selecting all or none
+    m_BorderLayout.AddButton(m_SelectAll, "Selected All", m_BorderLayout.GetW() / 2 );
+    m_BorderLayout.AddButton(m_UnselectAll, "Unselect All", m_BorderLayout.GetW() / 2 );
+
+    //add highlite button on the bottom of screen
+    m_BorderLayout.ForceNewLine();
     m_BorderLayout.AddButton( m_HighliteSet, "Highlite Selected Set" );
 
     //Browser objects need to have there static callbacks set in SetEditorScreen's constructor
@@ -107,14 +115,20 @@ bool SetEditorScreen::Update()
     //Updating the text in the input field by utilizing m_SelectedSetIndex
     m_SetNameInput.Update( set_name_vec[m_SelectedSetIndex] );
 
-    //Some sets are not available to user, ENUM helps determin which ones
+    //When index is pointing to geom sets that are not editable, we deactivate the buttons and input
     if ( m_SelectedSetIndex <= SET_NOT_SHOWN )
     {
         m_SetSelectBrowser->deactivate();
+        m_SetNameInput.Deactivate();
+        m_SelectAll.Deactivate();
+        m_UnselectAll.Deactivate();
     }
     else
     {
         m_SetSelectBrowser->activate();
+        m_SetNameInput.Activate();
+        m_SelectAll.Activate();
+        m_UnselectAll.Activate();
     }
 
     ////==== Load Geometry ====//
@@ -198,7 +212,6 @@ void SetEditorScreen::CallBack( Fl_Widget *w )
     m_ScreenMgr->SetUpdateFlag( true );
 }
 
-
 //Callback for GUI Devices related events like buttons or input fields
 void SetEditorScreen::GuiDeviceCallBack( GuiDevice* device )
 {
@@ -210,8 +223,12 @@ void SetEditorScreen::GuiDeviceCallBack( GuiDevice* device )
     //It uses m_SelectedSetIndex to select and name correct set
     if ( device == &m_SetNameInput )
     {
-        string name = m_SetNameInput.GetString();
-        vehiclePtr->SetSetName( m_SelectedSetIndex, name );
+        if (m_SelectedSetIndex > SET_NOT_SHOWN)
+        {
+            string name = m_SetNameInput.GetString();
+            vehiclePtr->SetSetName(m_SelectedSetIndex, name);
+            
+        }
     }
     //This is seeing if user clicked on the HighliteSet button
     //It uses m_SelectedSetIndex to select geom set to be activated
@@ -220,8 +237,40 @@ void SetEditorScreen::GuiDeviceCallBack( GuiDevice* device )
         vector < string > activate_geom_vec = vehiclePtr->GetGeomSet( m_SelectedSetIndex );
         vehiclePtr->SetActiveGeomVec( activate_geom_vec );   
     }
+    //This is seeing if user has selected the SelectAll button
+    else if ( device == &m_SelectAll )
+    {
+        if (m_SelectedSetIndex > SET_NOT_SHOWN)
+        {
+            //This finds the actual geoms and sets their flags to true (activate)
+            for (int i = 0; i < (int)geom_id_vec.size(); i++)
+            {
+                Geom* gptr = vehiclePtr->FindGeom(geom_id_vec[i]);
+                if (gptr)
+                {
+                    gptr->SetSetFlag(m_SelectedSetIndex, true);
+                }
+            }
+        }
+        
+    }
+    //This is seeing if user has selected the UnselectAll button
+    else if ( device == &m_UnselectAll )
+    {
+        if (m_SelectedSetIndex > SET_NOT_SHOWN)
+        {
+            //This finds the actual geoms and sets their flags to false (deactivate)
+            for (int i = 0; i < (int)geom_id_vec.size(); i++)
+            {
+                Geom* gptr = vehiclePtr->FindGeom(geom_id_vec[i]);
+                if (gptr)
+                {
+                    gptr->SetSetFlag(m_SelectedSetIndex, false);
+                }
+            }
+        }
+    }
 
-    //To update values, we can utilize Update Function by setting flag to true
     m_ScreenMgr->SetUpdateFlag( true );
 }
 

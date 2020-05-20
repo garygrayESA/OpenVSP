@@ -58,5 +58,8 @@ protected:
     //This gives user an input field to name a set
     StringInput m_SetNameInput;
 
+    //These buttons are for selecting all or none of the checkboxs in m_SetSelectBrowser
+    TriggerButton m_SelectAll;
+    TriggerButton m_UnselectAll;
 };
 #endif //VSPSETEDITORSCREEN__INCLUDED_
