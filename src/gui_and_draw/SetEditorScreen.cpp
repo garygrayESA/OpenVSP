@@ -9,7 +9,7 @@
 
 using namespace vsp;
 
-SetEditorScreen::SetEditorScreen(ScreenMgr* mgr ) : BasicScreen( mgr, 300, 330, "Set Editor" )
+SetEditorScreen::SetEditorScreen(ScreenMgr* mgr ) : BasicScreen( mgr, 300, 340, "Set Editor" )
 {
     //Variables to help get locations of widgets to look nice and clean
     int browserHeight = 200;
@@ -72,12 +72,19 @@ SetEditorScreen::SetEditorScreen(ScreenMgr* mgr ) : BasicScreen( mgr, 300, 330, 
     m_BorderLayout.AddYGap();
     //Sets x back to the left side with offset
     m_BorderLayout.SetX( borderPaddingWidth );
-    
+
     //Use this so we can have 2 buttons on same line
     m_BorderLayout.SetSameLineFlag( true );
+
+    //Add in our copy paste buttons
+    m_BorderLayout.AddButton( m_CopySet, "Copy Set", m_BorderLayout.GetW() / 2 );
+    m_BorderLayout.AddButton ( m_PasteSet, "Paste Set", m_BorderLayout.GetW() / 2 );
+
+    //starts a new line under copy & paste buttons
+    m_BorderLayout.ForceNewLine();
     //Add in the buttons for selecting all or none
-    m_BorderLayout.AddButton(m_SelectAll, "Selected All", m_BorderLayout.GetW() / 2 );
-    m_BorderLayout.AddButton(m_UnselectAll, "Unselect All", m_BorderLayout.GetW() / 2 );
+    m_BorderLayout.AddButton( m_SelectAll, "Selected All", m_BorderLayout.GetW() / 2 );
+    m_BorderLayout.AddButton( m_UnselectAll, "Unselect All", m_BorderLayout.GetW() / 2 );
 
     //add highlite button on the bottom of screen
     m_BorderLayout.ForceNewLine();
@@ -89,6 +96,7 @@ SetEditorScreen::SetEditorScreen(ScreenMgr* mgr ) : BasicScreen( mgr, 300, 330, 
 }
 
 //==== Update Screen ====//
+
 //If we have events from callbacks this is were we update logic based on any changes
 bool SetEditorScreen::Update()
 {
@@ -96,11 +104,32 @@ bool SetEditorScreen::Update()
     m_setBrowser->clear();
     m_SetSelectBrowser->clear();
 
+    //When index is pointing to geom sets that are not editable, we deactivate the buttons and input
+    if (m_SelectedSetIndex <= SET_NOT_SHOWN)
+    {
+        m_SetSelectBrowser->deactivate();
+        m_SetNameInput.Deactivate();
+        m_SelectAll.Deactivate();
+        m_UnselectAll.Deactivate();
+        m_CopySet.Deactivate();
+        m_PasteSet.Deactivate();
+    }
+    else
+    {
+        m_SetSelectBrowser->activate();
+        m_SetNameInput.Activate();
+        m_SelectAll.Activate();
+        m_UnselectAll.Activate();
+        m_CopySet.Activate();
+        m_PasteSet.Activate();
+    }
+
     //We get a vehiclePtr to help update browsers
-    assert(m_ScreenMgr);
+    assert( m_ScreenMgr );
     Vehicle* vehiclePtr = m_ScreenMgr->GetVehiclePtr();
 
     //==== Load Set Names and Values ====//
+
     //This is a vector that has all the names of the sets
     vector< string > set_name_vec = vehiclePtr->GetSetNameVec();
     //We iterate thru sets to be checked using ENUM
@@ -111,28 +140,12 @@ bool SetEditorScreen::Update()
     }
 
     //Updates what should be selected by utilizing m_SelectedSetIndex
-    m_setBrowser->select(m_SelectedSetIndex);
+    m_setBrowser->select( m_SelectedSetIndex );
     //Updating the text in the input field by utilizing m_SelectedSetIndex
     m_SetNameInput.Update( set_name_vec[m_SelectedSetIndex] );
 
-    //When index is pointing to geom sets that are not editable, we deactivate the buttons and input
-    if ( m_SelectedSetIndex <= SET_NOT_SHOWN )
-    {
-        m_SetSelectBrowser->deactivate();
-        m_SetNameInput.Deactivate();
-        m_SelectAll.Deactivate();
-        m_UnselectAll.Deactivate();
-    }
-    else
-    {
-        m_SetSelectBrowser->activate();
-        m_SetNameInput.Activate();
-        m_SelectAll.Activate();
-        m_UnselectAll.Activate();
-    }
-
     ////==== Load Geometry ====//
-    //Reusing vehiclePtr
+
     //geom_id_vec is filled with all possible geom's children an ID's
     vector< string > geom_id_vec = vehiclePtr->GetGeomVec();
     //geom_vec is filled with geom ptrs using ID's from geom_id_vec
@@ -181,10 +194,11 @@ void SetEditorScreen::CloseCallBack( Fl_Widget *w )
 //m_ScreenMgr is another BasicScreen member inherated from VspScreen (included from "ScreenBase.h")
 void SetEditorScreen::CallBack( Fl_Widget *w )
 {
-    assert(m_ScreenMgr); 
+    //We get a vehiclePtr to help work with events
+    assert( m_ScreenMgr ); 
     Vehicle* vehiclePtr = m_ScreenMgr->GetVehiclePtr();
 
-    if ( w == m_SetSelectBrowser)
+    if ( w == m_SetSelectBrowser )
     {
         //We get the index of the item user clicked
         int geom_index = m_SetSelectBrowser->value() - 1;
@@ -202,7 +216,7 @@ void SetEditorScreen::CallBack( Fl_Widget *w )
             }
         }
     }
-    else if ( w == m_setBrowser)
+    else if ( w == m_setBrowser )
     {
         //We update m_SelectedSetIndex with selected value
         m_SelectedSetIndex = m_setBrowser->value();
@@ -215,60 +229,81 @@ void SetEditorScreen::CallBack( Fl_Widget *w )
 //Callback for GUI Devices related events like buttons or input fields
 void SetEditorScreen::GuiDeviceCallBack( GuiDevice* device )
 {
-    assert(m_ScreenMgr);
+    //We get a vehiclePtr to help work with events
+    assert( m_ScreenMgr );
     Vehicle* vehiclePtr = m_ScreenMgr->GetVehiclePtr();
+    //Need this to go thru all geoms alot
     vector< string > geom_id_vec = vehiclePtr->GetGeomVec();
     
     //This checks if user entered input in the SetNameInput field
     //It uses m_SelectedSetIndex to select and name correct set
     if ( device == &m_SetNameInput )
     {
-        if (m_SelectedSetIndex > SET_NOT_SHOWN)
+        if ( m_SelectedSetIndex > SET_NOT_SHOWN )
         {
             string name = m_SetNameInput.GetString();
-            vehiclePtr->SetSetName(m_SelectedSetIndex, name);
-            
+            vehiclePtr->SetSetName( m_SelectedSetIndex, name );
         }
     }
-    //This is seeing if user clicked on the HighliteSet button
-    //It uses m_SelectedSetIndex to select geom set to be activated
+    else if ( device == &m_CopySet )
+    {
+        //Clear out the vec to avoid clutter
+        m_GeomBoolSetVec.clear();
+
+        //We use geom_id_vec to go thru all ID's
+        for (int i = 0; i < ( int )geom_id_vec.size(); i++)
+        {
+            //We fill a geom ptr with each geom to check the sets
+            Geom* gptr = vehiclePtr->FindGeom( geom_id_vec[i] );
+            //Checking what geom flags where set, and push the bool into m_GeomBoolSetVec
+            m_GeomBoolSetVec.push_back(gptr->GetSetFlag(m_SelectedSetIndex));
+        }
+    }
+    else if ( device == &m_PasteSet )
+    {
+        //We use geom_id_vec to go thru all ID's
+        for ( int i = 0; i < ( int )geom_id_vec.size(); i++ )
+        {
+            //We fill a geom ptr with each geom to check the sets
+            Geom* gptr = vehiclePtr->FindGeom(geom_id_vec[i]);
+            //Checking the m_GeomBoolSetVecwhat vec to see which geom flags where set, and passing value to gptr
+            gptr->SetSetFlag(m_SelectedSetIndex, bool(m_GeomBoolSetVec[i]));
+        } 
+    }
+    else if ( device == &m_SelectAll )
+    {
+        if ( m_SelectedSetIndex > SET_NOT_SHOWN )
+        {
+            //This finds the actual geoms and sets their flags to true (activate)
+            for (int i = 0; i < ( int )geom_id_vec.size(); i++ )
+            {
+                Geom* gptr = vehiclePtr->FindGeom( geom_id_vec[i] );
+                if ( gptr )
+                {
+                    gptr->SetSetFlag( m_SelectedSetIndex, true );
+                }
+            }
+        } 
+    }
+    else if ( device == &m_UnselectAll )
+    {
+        if ( m_SelectedSetIndex > SET_NOT_SHOWN )
+        {
+            //This finds the actual geoms and sets their flags to false (deactivate)
+            for (int i = 0; i < ( int )geom_id_vec.size(); i++)
+            {
+                Geom* gptr = vehiclePtr->FindGeom( geom_id_vec[i] );
+                if ( gptr )
+                {
+                    gptr->SetSetFlag( m_SelectedSetIndex, false );
+                }
+            }
+        }
+    }
     else if ( device == &m_HighliteSet )
     {
         vector < string > activate_geom_vec = vehiclePtr->GetGeomSet( m_SelectedSetIndex );
-        vehiclePtr->SetActiveGeomVec( activate_geom_vec );   
-    }
-    //This is seeing if user has selected the SelectAll button
-    else if ( device == &m_SelectAll )
-    {
-        if (m_SelectedSetIndex > SET_NOT_SHOWN)
-        {
-            //This finds the actual geoms and sets their flags to true (activate)
-            for (int i = 0; i < (int)geom_id_vec.size(); i++)
-            {
-                Geom* gptr = vehiclePtr->FindGeom(geom_id_vec[i]);
-                if (gptr)
-                {
-                    gptr->SetSetFlag(m_SelectedSetIndex, true);
-                }
-            }
-        }
-        
-    }
-    //This is seeing if user has selected the UnselectAll button
-    else if ( device == &m_UnselectAll )
-    {
-        if (m_SelectedSetIndex > SET_NOT_SHOWN)
-        {
-            //This finds the actual geoms and sets their flags to false (deactivate)
-            for (int i = 0; i < (int)geom_id_vec.size(); i++)
-            {
-                Geom* gptr = vehiclePtr->FindGeom(geom_id_vec[i]);
-                if (gptr)
-                {
-                    gptr->SetSetFlag(m_SelectedSetIndex, false);
-                }
-            }
-        }
+        vehiclePtr->SetActiveGeomVec( activate_geom_vec );
     }
 
     m_ScreenMgr->SetUpdateFlag( true );

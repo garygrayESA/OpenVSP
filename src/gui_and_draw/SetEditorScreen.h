@@ -52,14 +52,21 @@ protected:
     //m_RightLayout is to be used to hold m_SetSelectBrowser
     GroupLayout m_RightLayout;
 
-    //This button is for user to exacute highlite function
-    TriggerButton m_HighliteSet;
-
     //This gives user an input field to name a set
     StringInput m_SetNameInput;
+
+    //These buttons are for copying checked sets and pasting them to another set
+    TriggerButton m_CopySet;
+    TriggerButton m_PasteSet;
 
     //These buttons are for selecting all or none of the checkboxs in m_SetSelectBrowser
     TriggerButton m_SelectAll;
     TriggerButton m_UnselectAll;
+
+    //This button is for user to exacute highlite function
+    TriggerButton m_HighliteSet;
+
+    //temp location eventually put in geom or vehicle
+    vector< bool > m_GeomBoolSetVec;
 };
 #endif //VSPSETEDITORSCREEN__INCLUDED_
